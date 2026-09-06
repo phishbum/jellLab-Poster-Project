@@ -3,74 +3,680 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Good Times</title>
-
+  <title>Good Times | Concert Memory Posters</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #111;
-      color: white;
-      text-align: center;
+      background:
+        radial-gradient(circle at top, rgba(116, 58, 213, 0.35), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(0, 201, 167, 0.25), transparent 30%),
+        linear-gradient(180deg, #0b0b14 0%, #121225 45%, #0a0a12 100%);
+      color: #ffffff;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 10, 18, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 0;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .logo span {
+      color: #7cf7d4;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      font-size: 15px;
+      color: #d7d7e2;
     }
 
     .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      padding: 90px 0 70px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 50px;
       align-items: center;
-      padding: 30px;
-      box-sizing: border-box;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(124, 247, 212, 0.12);
+      color: #7cf7d4;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 18px;
     }
 
     h1 {
       font-size: 64px;
-      margin: 0 0 10px;
+      line-height: 1.02;
+      margin: 0 0 18px;
+      letter-spacing: -1px;
     }
 
-    h2 {
-      font-weight: normal;
-      color: #ccc;
-      margin-bottom: 35px;
-    }
-
-    p {
-      max-width: 650px;
+    .hero p {
       font-size: 20px;
-      line-height: 1.6;
-      color: #ddd;
+      line-height: 1.7;
+      color: #d3d3df;
+      max-width: 650px;
+      margin-bottom: 30px;
     }
 
-    button {
-      margin-top: 30px;
-      padding: 16px 30px;
-      border: none;
-      border-radius: 8px;
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 15px 26px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 16px;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7cf7d4, #8f7cff);
+      color: #0b0b14;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(143,124,255,0.25);
+    }
+
+    .btn-secondary {
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #ffffff;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .poster-display {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: end;
+    }
+
+    .poster {
+      border-radius: 18px;
+      padding: 18px;
+      min-height: 290px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .poster::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent 35%);
+      pointer-events: none;
+    }
+
+    .poster small {
+      display: block;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+
+    .poster strong {
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    .poster span {
+      margin-top: 8px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .poster-one {
+      background: linear-gradient(160deg, #fa709a, #fee140);
+      color: #1b1020;
+    }
+
+    .poster-two {
+      background: linear-gradient(160deg, #43cea2, #185a9d);
+    }
+
+    .poster-three {
+      background: linear-gradient(160deg, #8e2de2, #4a00e0);
+    }
+
+    section {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 50px;
+    }
+
+    .section-title h2 {
+      font-size: 42px;
+      margin: 0 0 12px;
+    }
+
+    .section-title p {
+      color: #cfcfe0;
       font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+    }
+
+    .step-number {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7cf7d4, #8f7cff);
+      color: #0b0b14;
+      margin-bottom: 16px;
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+
+    .card p {
+      margin: 0;
+      color: #d0d0de;
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .show-form-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 22px;
+      padding: 30px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.2);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #e8e8f0;
+      font-weight: 700;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 14px 15px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: white;
+      font-size: 15px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 130px;
+      resize: vertical;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #b6b6c9;
+    }
+
+    .form-note {
+      margin-top: 18px;
+      color: #bfc0d3;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .form-button {
+      margin-top: 22px;
+    }
+
+    .examples {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .example-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .example-art {
+      height: 240px;
+      display: flex;
+      align-items: end;
+      padding: 20px;
+      font-weight: 800;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .art-a {
+      background: linear-gradient(160deg, #f953c6, #b91d73);
+    }
+
+    .art-b {
+      background: linear-gradient(160deg, #36d1dc, #5b86e5);
+    }
+
+    .art-c {
+      background: linear-gradient(160deg, #f7971e, #ffd200);
+      color: #1c1402;
+    }
+
+    .example-copy {
+      padding: 20px;
+    }
+
+    .example-copy h3 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    .example-copy p {
+      margin: 0;
+      color: #d0d0de;
+      line-height: 1.6;
+    }
+
+    .cta {
+      text-align: center;
+      padding: 90px 0 100px;
+    }
+
+    .cta-box {
+      background: linear-gradient(135deg, rgba(124,247,212,0.12), rgba(143,124,255,0.12));
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 50px 28px;
+    }
+
+    .cta h2 {
+      margin: 0 0 14px;
+      font-size: 42px;
+    }
+
+    .cta p {
+      max-width: 700px;
+      margin: 0 auto 24px;
+      color: #d2d2df;
+      line-height: 1.7;
+      font-size: 18px;
+    }
+
+    footer {
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 28px 0;
+      color: #bdbdd0;
+      font-size: 14px;
+    }
+
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .steps,
+      .examples {
+        grid-template-columns: 1fr;
+      }
+
+      .poster-display {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 46px;
+      }
+
+      .section-title h2,
+      .cta h2 {
+        font-size: 34px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .nav {
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .nav-links {
+        gap: 14px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      h1 {
+        font-size: 38px;
+      }
+
+      .hero p,
+      .section-title p,
+      .cta p {
+        font-size: 17px;
+      }
     }
   </style>
 </head>
-
 <body>
 
-  <section class="hero">
-    <h1>GOOD TIMES</h1>
+  <header>
+    <div class="container nav">
+      <div class="logo">GOOD <span>TIMES</span></div>
+      <nav class="nav-links">
+        <a href="#how-it-works">How It Works</a>
+        <a href="#find-show">Find Your Show</a>
+        <a href="#examples">Examples</a>
+      </nav>
+    </div>
+  </header>
 
-    <h2>Your show. Your memory. Your poster.</h2>
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Custom concert memory posters</div>
+          <h1>Your show.<br>Your memory.<br>Your poster.</h1>
+          <p>
+            Turn an unforgettable concert into custom artwork. Pick a show,
+            tell the story of what made it special, and create a poster inspired
+            by the night you never want to forget.
+          </p>
+          <div class="hero-buttons">
+            <a href="#find-show" class="btn btn-primary">Create Your Poster</a>
+            <a href="#examples" class="btn btn-secondary">See Examples</a>
+          </div>
+        </div>
 
-    <p>
-      Turn an unforgettable concert into custom artwork.
-      Choose a show, tell us what made it special, and create
-      a poster inspired by the night you never want to forget.
-    </p>
+        <div class="poster-display">
+          <div class="poster poster-one">
+            <small>Phish</small>
+            <strong>Walnut Creek</strong>
+            <span>Raleigh, NC • Summer Night</span>
+          </div>
 
-    <button onclick="alert('Poster creator coming next!')">
-      Create Your Poster
-    </button>
-  </section>
+          <div class="poster poster-two">
+            <small>Billy Strings</small>
+            <strong>St. Augustine</strong>
+            <span>Sea breeze • Lights • Melted faces</span>
+          </div>
+
+          <div class="poster poster-three">
+            <small>Your Story</small>
+            <strong>Made Into Art</strong>
+            <span>Venue • Date • Memory • Vibe</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works">
+      <div class="container">
+        <div class="section-title">
+          <h2>How it works</h2>
+          <p>
+            Simple idea, cool result: tell us about the show, the energy, and the memory —
+            then turn it into a poster worth hanging up.
+          </p>
+        </div>
+
+        <div class="steps">
+          <div class="card">
+            <div class="step-number">1</div>
+            <h3>Pick the show</h3>
+            <p>
+              Start with the band, venue, city, and date. Whether it was Phish, Billy Strings,
+              or another unforgettable night, it starts here.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="step-number">2</div>
+            <h3>Tell the story</h3>
+            <p>
+              Was it your first show? Did a certain song hit like a lightning bolt? Did the weather,
+              crowd, or moment make it legendary? That’s the good stuff.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="step-number">3</div>
+            <h3>Create the poster</h3>
+            <p>
+              Your concert memory becomes custom artwork with a style inspired by the mood,
+              energy, and story of that night.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="find-show">
+      <div class="container">
+        <div class="section-title">
+          <h2>Find your show</h2>
+          <p>
+            This is the first version of the poster request form. Later we can make it smarter
+            and actually search shows automatically. For now, this gets the idea on the page.
+          </p>
+        </div>
+
+        <div class="show-form-wrap">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="band">Band / Artist</label>
+              <input type="text" id="band" placeholder="Example: Phish">
+            </div>
+
+            <div class="form-group">
+              <label for="date">Show Date</label>
+              <input type="text" id="date" placeholder="Example: 07/17/2026">
+            </div>
+
+            <div class="form-group">
+              <label for="venue">Venue</label>
+              <input type="text" id="venue" placeholder="Example: Walnut Creek">
+            </div>
+
+            <div class="form-group">
+              <label for="city">City / State</label>
+              <input type="text" id="city" placeholder="Example: Raleigh, NC">
+            </div>
+
+            <div class="form-group full">
+              <label for="memory">What made this show special?</label>
+              <textarea id="memory" placeholder="Example: First show with my wife, perfect weather, crazy second set, and one song I’ll never forget..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-button">
+            <a href="#" class="btn btn-primary" onclick="alert('Next step: we will turn this into a real poster-builder form.')">Start My Poster</a>
+          </div>
+
+          <p class="form-note">
+            Right now this button is just a placeholder. Next, we can make it lead to a real
+            poster-builder page or connect it to a form.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="examples">
+      <div class="container">
+        <div class="section-title">
+          <h2>Example poster vibes</h2>
+          <p>
+            These are sample style blocks for now. Later, we can swap these out with real generated
+            poster mockups and featured band examples.
+          </p>
+        </div>
+
+        <div class="examples">
+          <div class="example-card">
+            <div class="example-art art-a">PSYCHEDELIC<br>GLOW</div>
+            <div class="example-copy">
+              <h3>Color-soaked and wild</h3>
+              <p>
+                Great for jam bands, late-night sets, trippy energy, and memories that felt a little
+                like time stopped working.
+              </p>
+            </div>
+          </div>
+
+          <div class="example-card">
+            <div class="example-art art-b">COASTAL<br>NIGHT</div>
+            <div class="example-copy">
+              <h3>Atmospheric and scenic</h3>
+              <p>
+                Perfect for outdoor shows, beach venues, warm nights, or any concert where the setting
+                was part of the magic.
+              </p>
+            </div>
+          </div>
+
+          <div class="example-card">
+            <div class="example-art art-c">BOLD<br>VINTAGE</div>
+            <div class="example-copy">
+              <h3>Classic poster style</h3>
+              <p>
+                Strong typography, vintage print energy, and a look that feels like something you’d
+                actually frame instead of forgetting in your camera roll.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <div class="cta-box">
+          <h2>Make the memory hang on the wall</h2>
+          <p>
+            Some shows are more than just a ticket stub. GOOD TIMES is built to turn those nights
+            into artwork that actually means something.
+          </p>
+          <a href="#find-show" class="btn btn-primary">Build Your Poster</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-row">
+      <div>© 2026 GOOD TIMES</div>
+      <div>Concert memories made visual.</div>
+    </div>
+  </footer>
 
 </body>
 </html>
