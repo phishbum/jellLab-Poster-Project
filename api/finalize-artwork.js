@@ -2,6 +2,7 @@ import { get, put } from "@vercel/blob";
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import opentype from "opentype.js";
 import sharp from "sharp";
 
 const WIDTH = 3600;
@@ -10,7 +11,8 @@ const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS = 8;
 const requestBuckets = new Map();
 const require = createRequire(import.meta.url);
-const POSTER_FONT = readFileSync(require.resolve("@fontsource/inter/files/inter-latin-900-normal.woff2")).toString("base64");
+const fontBytes = readFileSync(require.resolve("@fontsource/inter/files/inter-latin-900-normal.woff"));
+const POSTER_FONT = opentype.parse(fontBytes.buffer.slice(fontBytes.byteOffset, fontBytes.byteOffset + fontBytes.byteLength));
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
 
@@ -46,10 +48,6 @@ function underRateLimit(req) {
   return true;
 }
 
-function escapeXml(value) {
-  return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character]);
-}
-
 function wrapWords(value, maxChars, maxLines) {
   const words = value.split(/\s+/).filter(Boolean).flatMap(word => {
     if (word.length <= maxChars) return word;
@@ -73,8 +71,28 @@ function wrapWords(value, maxChars, maxLines) {
   return lines;
 }
 
-function textLines(lines, x, y, lineHeight, attributes) {
-  return lines.map((line, index) => `<text x="${x}" y="${y + index * lineHeight}" ${attributes}>${escapeXml(line)}</text>`).join("");
+function pathText(value, x, y, fontSize, { letterSpacing = 0, anchor = "start", fill = "#fff" } = {}) {
+  const glyphs = POSTER_FONT.stringToGlyphs(value);
+  const scale = fontSize / POSTER_FONT.unitsPerEm;
+  let width = 0;
+  for (let index = 0; index < glyphs.length; index += 1) {
+    if (index) width += POSTER_FONT.getKerningValue(glyphs[index - 1], glyphs[index]) * scale;
+    width += (glyphs[index].advanceWidth || POSTER_FONT.unitsPerEm) * scale;
+    if (index < glyphs.length - 1) width += letterSpacing;
+  }
+  let cursor = anchor === "end" ? x - width : x;
+  const paths = [];
+  for (let index = 0; index < glyphs.length; index += 1) {
+    const glyph = glyphs[index];
+    if (index) cursor += POSTER_FONT.getKerningValue(glyphs[index - 1], glyph) * scale;
+    paths.push(glyph.getPath(cursor, y, fontSize).toPathData(1));
+    cursor += (glyph.advanceWidth || POSTER_FONT.unitsPerEm) * scale + letterSpacing;
+  }
+  return `<path d="${paths.join(" ")}" fill="${fill}"/>`;
+}
+
+function pathLines(lines, x, y, lineHeight, fontSize, options) {
+  return lines.map((line, index) => pathText(line, x, y + index * lineHeight, fontSize, options)).join("");
 }
 
 export function buildTypographySvg({ venue, city, date, song, style }) {
@@ -90,22 +108,18 @@ export function buildTypographySvg({ venue, city, date, song, style }) {
   return Buffer.from(`
     <svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <style>@font-face{font-family:PosterInter;src:url(data:font/woff2;base64,${POSTER_FONT}) format('woff2');font-weight:900}text{font-family:PosterInter,sans-serif}</style>
         <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity=".88"/><stop offset="1" stop-color="#05030d" stop-opacity="0"/></linearGradient>
         <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity="0"/><stop offset=".42" stop-color="#05030d" stop-opacity=".64"/><stop offset="1" stop-color="#05030d" stop-opacity=".96"/></linearGradient>
-        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity=".85"/></filter>
       </defs>
       <rect width="${WIDTH}" height="1050" fill="url(#topShade)"/>
       <rect y="2700" width="${WIDTH}" height="2100" fill="url(#bottomShade)"/>
       <rect x="92" y="92" width="3416" height="4616" rx="14" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="8"/>
-      <g font-family="PosterInter, sans-serif" fill="#fff" filter="url(#shadow)">
-        <text x="230" y="510" font-size="330" font-weight="900" letter-spacing="60">PHISH</text>
-        <text x="3370" y="470" text-anchor="end" font-size="80" font-weight="800" letter-spacing="16">GOOD TIMES</text>
-        <text x="230" y="${venueStart - 380}" fill="${accent}" font-size="78" font-weight="900" letter-spacing="18">CONCERT MEMORY</text>
-        ${textLines(venueLines, 230, venueStart, 320, `font-size="${venueSize}" font-weight="900" letter-spacing="-12"`)}
-        <text x="230" y="3990" font-size="94" font-weight="800" letter-spacing="10">${escapeXml(detail)}</text>
-        ${textLines(songLines, 230, songStart, 135, `fill="${accent}" font-size="112" font-weight="900" letter-spacing="8"`)}
-      </g>
+      ${pathText("PHISH", 230, 510, 330, { letterSpacing: 60 })}
+      ${pathText("GOOD TIMES", 3370, 470, 80, { letterSpacing: 16, anchor: "end" })}
+      ${pathText("CONCERT MEMORY", 230, venueStart - 380, 78, { letterSpacing: 18, fill: accent })}
+      ${pathLines(venueLines, 230, venueStart, 320, venueSize, { letterSpacing: -12 })}
+      ${pathText(detail, 230, 3990, 94, { letterSpacing: 10 })}
+      ${pathLines(songLines, 230, songStart, 135, 112, { letterSpacing: 8, fill: accent })}
     </svg>
   `);
 }
