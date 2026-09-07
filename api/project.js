@@ -93,6 +93,9 @@ function cleanArtwork(value) {
     model: clean(source.model, 80),
     quality: clean(source.quality, 30),
     size: clean(source.size, 30),
+    kind: clean(source.kind, 30),
+    format: clean(source.format, 20),
+    density: Number.isFinite(Number(source.density)) ? Number(source.density) : null,
     createdAt: clean(source.createdAt, 40),
     estimatedImageOutputCostUsd: Number.isFinite(Number(source.estimatedImageOutputCostUsd)) ? Number(source.estimatedImageOutputCostUsd) : null
   };
@@ -101,6 +104,7 @@ function cleanArtwork(value) {
 function cleanProject(value) {
   const source = value && typeof value === "object" ? value : {};
   const artworkGeneration = cleanArtwork(source.artworkGeneration);
+  const finalArtwork = cleanArtwork(source.finalArtwork);
   const format = ["Digital file", "Printed poster"].includes(source.format) ? source.format : "Digital file";
   const size = ["12 × 16 in", "18 × 24 in"].includes(source.size) ? source.size : "12 × 16 in";
   return {
@@ -112,7 +116,8 @@ function cleanProject(value) {
     style: ["psychedelic", "scenic", "vintage"].includes(source.style) ? source.style : "psychedelic",
     aiDirection: cleanDirection(source.aiDirection),
     artworkGeneration,
-    artworkApproved: Boolean(source.artworkApproved && artworkGeneration),
+    finalArtwork,
+    artworkApproved: Boolean(source.artworkApproved && finalArtwork),
     format,
     size,
     total: (format === "Printed poster" ? 49 : 24) + (size === "18 × 24 in" ? 20 : 0)

@@ -25,15 +25,32 @@ export default async function handler(req, res) {
   if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f]{64}$/i.test(token)) return res.status(400).json({ error: "Invalid artwork link." });
 
   try {
-    const result = await get(`generations/${id}-${token}.webp`, { access: "private" });
+    let record;
+    try {
+      const recordResult = await get(`records/${id}-${token}.json`, { access: "private" });
+      if (recordResult?.statusCode === 200) {
+        const recordBytes = await new Response(recordResult.stream).arrayBuffer();
+        record = JSON.parse(Buffer.from(recordBytes).toString("utf8"));
+      }
+    } catch {
+      record = null;
+    }
+
+    const safePathname = typeof record?.pathname === "string" && /^(generations|finals)\/[0-9a-f-]{36}-[0-9a-f]{64}\.(webp|jpe?g|png)$/i.test(record.pathname)
+      ? record.pathname
+      : `generations/${id}-${token}.webp`;
+    const result = await get(safePathname, { access: "private" });
     if (!result || result.statusCode !== 200) return res.status(404).json({ error: "Artwork not found." });
     const bytes = Buffer.from(await new Response(result.stream).arrayBuffer());
-    res.setHeader("Content-Type", result.blob.contentType || "image/webp");
+    const contentType = result.blob.contentType || record?.contentType || "image/webp";
+    const extension = contentType === "image/jpeg" ? "jpg" : contentType === "image/png" ? "png" : "webp";
+    const filename = record?.kind === "print-master" ? `good-times-print-master-${id}.${extension}` : `good-times-poster-${id}.${extension}`;
+    res.setHeader("Content-Type", contentType);
     res.setHeader("Content-Length", String(bytes.length));
     res.setHeader("Cache-Control", "private, max-age=3600");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
-    res.setHeader("Content-Disposition", `${req.query.download === "1" ? "attachment" : "inline"}; filename="good-times-poster-${id}.webp"`);
+    res.setHeader("Content-Disposition", `${req.query.download === "1" ? "attachment" : "inline"}; filename="${filename}"`);
     return res.status(200).end(bytes);
   } catch (error) {
     console.error("Private artwork retrieval failed.", { name: error?.name || "Error", message: error?.message || "Unknown error" });

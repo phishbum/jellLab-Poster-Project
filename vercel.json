@@ -2,6 +2,9 @@
   "functions": {
     "api/generate-artwork.js": {
       "maxDuration": 300
+    },
+    "api/finalize-artwork.js": {
+      "maxDuration": 300
     }
   }
 }
