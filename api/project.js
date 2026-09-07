@@ -102,7 +102,7 @@ function cleanProject(value) {
   const source = value && typeof value === "object" ? value : {};
   const artworkGeneration = cleanArtwork(source.artworkGeneration);
   const format = ["Digital file", "Printed poster"].includes(source.format) ? source.format : "Digital file";
-  const size = ["12 Ã— 16 in", "18 Ã— 24 in"].includes(source.size) ? source.size : "12 Ã— 16 in";
+  const size = ["12 × 16 in", "18 × 24 in"].includes(source.size) ? source.size : "12 × 16 in";
   return {
     date: clean(source.date, 20),
     venue: clean(source.venue, 120),
@@ -115,7 +115,7 @@ function cleanProject(value) {
     artworkApproved: Boolean(source.artworkApproved && artworkGeneration),
     format,
     size,
-    total: (format === "Printed poster" ? 49 : 24) + (size === "18 Ã— 24 in" ? 20 : 0)
+    total: (format === "Printed poster" ? 49 : 24) + (size === "18 × 24 in" ? 20 : 0)
   };
 }
 
