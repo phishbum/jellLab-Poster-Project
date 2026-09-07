@@ -1,5 +1,7 @@
 import { get, put } from "@vercel/blob";
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import sharp from "sharp";
 
 const WIDTH = 3600;
@@ -7,6 +9,8 @@ const HEIGHT = 4800;
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS = 8;
 const requestBuckets = new Map();
+const require = createRequire(import.meta.url);
+const POSTER_FONT = readFileSync(require.resolve("@fontsource/inter/files/inter-latin-900-normal.woff2")).toString("base64");
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
 
@@ -86,6 +90,7 @@ export function buildTypographySvg({ venue, city, date, song, style }) {
   return Buffer.from(`
     <svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
+        <style>@font-face{font-family:PosterInter;src:url(data:font/woff2;base64,${POSTER_FONT}) format('woff2');font-weight:900}text{font-family:PosterInter,sans-serif}</style>
         <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity=".88"/><stop offset="1" stop-color="#05030d" stop-opacity="0"/></linearGradient>
         <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity="0"/><stop offset=".42" stop-color="#05030d" stop-opacity=".64"/><stop offset="1" stop-color="#05030d" stop-opacity=".96"/></linearGradient>
         <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity=".85"/></filter>
@@ -93,7 +98,7 @@ export function buildTypographySvg({ venue, city, date, song, style }) {
       <rect width="${WIDTH}" height="1050" fill="url(#topShade)"/>
       <rect y="2700" width="${WIDTH}" height="2100" fill="url(#bottomShade)"/>
       <rect x="92" y="92" width="3416" height="4616" rx="14" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="8"/>
-      <g font-family="Arial, Helvetica, sans-serif" fill="#fff" filter="url(#shadow)">
+      <g font-family="PosterInter, sans-serif" fill="#fff" filter="url(#shadow)">
         <text x="230" y="510" font-size="330" font-weight="900" letter-spacing="60">PHISH</text>
         <text x="3370" y="470" text-anchor="end" font-size="80" font-weight="800" letter-spacing="16">GOOD TIMES</text>
         <text x="230" y="${venueStart - 380}" fill="${accent}" font-size="78" font-weight="900" letter-spacing="18">CONCERT MEMORY</text>
