@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/generate-artwork.js": {
+      "maxDuration": 300
+    }
+  }
+}
