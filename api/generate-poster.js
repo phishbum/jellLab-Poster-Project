@@ -108,9 +108,16 @@ export default async function handler(req, res) {
 
     const payload = await openaiResponse.json();
     if (!openaiResponse.ok) {
-      console.error("OpenAI request failed.", { status: openaiResponse.status, code: payload?.error?.code || "unknown" });
+      const upstreamCode = payload?.error?.code || "unknown";
+      console.error("OpenAI request failed.", { status: openaiResponse.status, code: upstreamCode });
+      if (upstreamCode === "insufficient_quota") {
+        return res.status(503).json({ error: "OpenAI API billing is not active or has no available credit. Add API billing, then try again.", reason: "insufficient_quota" });
+      }
+      if (upstreamCode === "model_not_found" || upstreamCode === "invalid_model") {
+        return res.status(503).json({ error: "The configured OpenAI model is not available to this project.", reason: "model_unavailable" });
+      }
       const status = openaiResponse.status === 429 ? 429 : 502;
-      return res.status(status).json({ error: status === 429 ? "AI is busy right now. Please wait a moment and try again." : "The art direction could not be created. Please try again." });
+      return res.status(status).json({ error: status === 429 ? "OpenAI is rate-limiting requests right now. Please wait a moment and try again." : "The art direction could not be created. Please try again.", reason: "upstream_error" });
     }
 
     const text = outputText(payload);
