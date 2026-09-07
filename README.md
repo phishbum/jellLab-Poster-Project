@@ -14,7 +14,7 @@ A three-step Phish concert-memory poster prototype with AI-assisted creative dir
 Configure these in Vercel, not in client code:
 
 - `OpenAI_API_key` (required; the existing production variable)
-- `OPENAI_TEXT_MODEL` (optional; defaults to `gpt-6-astra`)
+- `OPENAI_TEXT_MODEL` (optional; defaults to `gpt-5.6-luna`)
 
 Use `.env.example` only as a local template. Never commit a real key.
 

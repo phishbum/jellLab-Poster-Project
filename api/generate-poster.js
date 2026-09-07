@@ -1,4 +1,4 @@
-const MODEL = process.env.OPENAI_TEXT_MODEL || "gpt-6-astra";
+const MODEL = process.env.OPENAI_TEXT_MODEL || "gpt-5.6-luna";
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS = 5;
 const requestBuckets = new Map();
