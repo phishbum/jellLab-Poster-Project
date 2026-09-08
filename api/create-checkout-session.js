@@ -1,4 +1,5 @@
 import { clean, checkoutProduct, ensureOrderSchema, getAllowedOrigin, getSql, getStripe, integrationIdentifier, newOrderIdentity, priceFor, verifyPrintMaster } from "./_orders.js";
+import { exclusionError, hasExcludedReference, sanitizeLayout, sanitizeStyle } from "./_poster-policy.js";
 
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS = 12;
@@ -46,16 +47,19 @@ export default async function handler(req, res) {
   const size = ["12 × 16 in", "18 × 24 in"].includes(body.size) ? body.size : "";
   const amountTotal = priceFor(format, size);
   const snapshot = {
+    artist: clean(body.poster?.artist, 120),
     venue: clean(body.poster?.venue, 120),
     city: clean(body.poster?.city, 100),
     date: clean(body.poster?.date, 20),
     song: clean(body.poster?.song, 180),
-    style: ["psychedelic", "scenic", "vintage"].includes(body.poster?.style) ? body.poster.style : "psychedelic"
+    style: sanitizeStyle(body.poster?.style),
+    layout: sanitizeLayout(body.poster?.layout)
   };
 
   if (!customerName || !validEmail(customerEmail)) return res.status(400).json({ error: "Enter your name and a valid email." });
   if (!amountTotal) return res.status(400).json({ error: "Choose a valid poster format and size." });
-  if (!snapshot.venue || !snapshot.date) return res.status(400).json({ error: "Your poster needs a show date and venue." });
+  if (!snapshot.artist || !snapshot.venue || !snapshot.date) return res.status(400).json({ error: "Your poster needs an artist, show date, and venue." });
+  if (hasExcludedReference(snapshot.artist, snapshot.song)) return res.status(400).json({ error: exclusionError() });
 
   let printMaster;
   try {
