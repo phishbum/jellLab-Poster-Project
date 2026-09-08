@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { buildTypographySvgV2 } from "../api/finalize-artwork.js";
 import generatePoster from "../api/generate-poster.js";
 import { POSTER_LAYOUTS, POSTER_STYLES, hasExcludedReference, sanitizeLayout, sanitizeStyle } from "../api/_poster-policy.js";
@@ -50,6 +50,18 @@ test("the page JavaScript compiles and exposes multi-band controls", () => {
   assert.match(html, /data-style="cosmic-bluegrass"/);
   assert.match(html, /data-layout="minimal"/);
   assert.doesNotMatch(html, /Your Phish show/);
+});
+
+test("the gallery presents six distinct art-first poster directions", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /The art should stop the scroll/);
+  assert.match(html, /High Country Orbit/);
+  assert.match(html, /Low Country Moon/);
+  assert.match(html, /Frequency Garden/);
+  assert.equal((html.match(/artist:'/g) || []).length >= 6, true);
+  for (const asset of ["cosmic-bluegrass.jpg", "southern-gothic.jpg", "funk-geometry.jpg"]) {
+    assert.equal(existsSync(new URL(`../assets/${asset}`, import.meta.url)), true);
+  }
 });
 
 test("AI direction rejects excluded projects before calling OpenAI", async () => {
