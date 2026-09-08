@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 2.7 seconds
-Output:
 import test from "node:test";
 import assert from "node:assert/strict";
 import createCheckout from "../api/create-checkout-session.js";
