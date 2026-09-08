@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { cleanPosterText, exclusionError, hasExcludedReference, sanitizeLayout, sanitizeStyle } from "./_poster-policy.js";
 
 const WINDOW_MS = 60 * 1000;
 const MAX_REQUESTS = 30;
@@ -62,9 +63,7 @@ function underRateLimit(req) {
   return true;
 }
 
-function clean(value, max) {
-  return typeof value === "string" ? value.replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, max) : "";
-}
+const clean = cleanPosterText;
 
 function cleanDirection(value) {
   const source = value && typeof value === "object" ? value : null;
@@ -108,12 +107,14 @@ function cleanProject(value) {
   const format = ["Digital file", "Printed poster"].includes(source.format) ? source.format : "Digital file";
   const size = ["12 × 16 in", "18 × 24 in"].includes(source.size) ? source.size : "12 × 16 in";
   return {
+    artist: clean(source.artist, 120),
     date: clean(source.date, 20),
     venue: clean(source.venue, 120),
     city: clean(source.city, 100),
     song: clean(source.song, 180),
     memory: clean(source.memory, 1400),
-    style: ["psychedelic", "scenic", "vintage"].includes(source.style) ? source.style : "psychedelic",
+    style: sanitizeStyle(source.style),
+    layout: sanitizeLayout(source.layout),
     aiDirection: cleanDirection(source.aiDirection),
     artworkGeneration,
     finalArtwork,
@@ -167,7 +168,8 @@ export default async function handler(req, res) {
 
     if (body.action !== "save") return res.status(400).json({ error: "Choose save or load." });
     const project = cleanProject(body.project);
-    if (!project.date || !project.venue) return res.status(400).json({ error: "Add a show date and venue before saving." });
+    if (!project.artist || !project.date || !project.venue) return res.status(400).json({ error: "Add an artist, show date, and venue before saving." });
+    if (hasExcludedReference(project.artist, project.song, project.memory)) return res.status(400).json({ error: exclusionError() });
 
     const existingId = clean(body.id, 40);
     const existingToken = clean(body.token, 70);
