@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import opentype from "opentype.js";
 import sharp from "sharp";
+import { cleanPosterText, exclusionError, hasExcludedReference, sanitizeLayout, sanitizeStyle } from "./_poster-policy.js";
 
 const WIDTH = 3600;
 const HEIGHT = 4800;
@@ -16,9 +17,7 @@ const POSTER_FONT = opentype.parse(fontBytes.buffer.slice(fontBytes.byteOffset, 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
 
-function clean(value, max) {
-  return typeof value === "string" ? value.replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
-}
+const clean = cleanPosterText;
 
 function allowedOrigin(req) {
   const origin = req.headers.origin;
@@ -95,31 +94,75 @@ function pathLines(lines, x, y, lineHeight, fontSize, options) {
   return lines.map((line, index) => pathText(line, x, y + index * lineHeight, fontSize, options)).join("");
 }
 
-export function buildTypographySvg({ venue, city, date, song, style }) {
-  const venueLines = wrapWords(venue.toUpperCase(), 14, 3);
-  const songLines = song ? wrapWords(song.toUpperCase(), 30, 2) : [];
-  const accent = style === "vintage" ? "#ffd58d" : "#73f4cf";
-  const longestVenueLine = Math.max(...venueLines.map(line => line.length), 1);
-  const venueSize = longestVenueLine > 12 ? 290 : longestVenueLine > 9 ? 320 : 350;
-  const venueStart = 3530 - (venueLines.length - 1) * 320;
-  const songStart = 4240 - (songLines.length - 1) * 135;
-  const detail = [city.toUpperCase(), date.toUpperCase()].filter(Boolean).join("  •  ");
+export function buildTypographySvg(details) {
+  return buildTypographySvgV2(details);
+}
+
+function fitSize(value, maxWidth, preferred, minimum, letterSpacing = 0) {
+  const glyphs = POSTER_FONT.stringToGlyphs(value);
+  const units = glyphs.reduce((sum, glyph, index) => sum + (glyph.advanceWidth || POSTER_FONT.unitsPerEm) + (index ? POSTER_FONT.getKerningValue(glyphs[index - 1], glyph) : 0), 0);
+  if (!units) return preferred;
+  const spacing = Math.max(0, value.length - 1) * letterSpacing;
+  return Math.max(minimum, Math.min(preferred, (maxWidth - spacing) * POSTER_FONT.unitsPerEm / units));
+}
+
+export function buildTypographySvgV2({ artist, venue, city, date, song, style, layout }) {
+  const safeArtist = clean(artist, 120).toUpperCase();
+  const safeVenue = clean(venue, 120).toUpperCase();
+  const safeCity = clean(city, 100).toUpperCase();
+  const safeDate = clean(date, 20).toUpperCase();
+  const safeSong = clean(song, 180).toUpperCase();
+  const selectedLayout = sanitizeLayout(layout);
+  const selectedStyle = sanitizeStyle(style);
+  const accent = selectedStyle === "vintage" ? "#ffd58d" : selectedStyle === "southern-gothic" ? "#e5ad70" : selectedStyle === "cosmic-bluegrass" ? "#87d7ff" : "#73f4cf";
+  const artistSize = fitSize(safeArtist, 2860, selectedLayout === "minimal" ? 170 : 220, 112, 18);
+  const venueSize = fitSize(safeVenue, 2850, selectedLayout === "corner" ? 150 : 175, 92, 4);
+  const detail = [safeVenue, safeCity, safeDate].filter(Boolean).join("  •  ");
+  const compactDetailSize = fitSize(detail, 3000, 88, 58, 5);
+  const songLabel = safeSong ? `MEMORY: ${safeSong}` : "ONE NIGHT. YOUR STORY.";
+  const songSize = fitSize(songLabel, 2860, 92, 58, 4);
+
+  const layouts = {
+    gallery: `
+      <rect width="${WIDTH}" height="760" fill="url(#topShade)"/>
+      <rect y="3740" width="${WIDTH}" height="1060" fill="url(#bottomShade)"/>
+      ${pathText(safeArtist, 220, 390, artistSize, { letterSpacing: 18 })}
+      ${pathText("GOOD TIMES / CONCERT MEMORY", 3380, 350, 58, { letterSpacing: 9, anchor: "end", fill: accent })}
+      ${pathText(safeVenue, 220, 4200, venueSize, { letterSpacing: 4 })}
+      ${pathText([safeCity, safeDate].filter(Boolean).join("  •  "), 220, 4390, 78, { letterSpacing: 6 })}
+      ${pathText(songLabel, 220, 4590, songSize, { letterSpacing: 4, fill: accent })}`,
+    corner: `
+      <rect x="125" y="125" width="1430" height="570" rx="28" fill="#05030d" fill-opacity=".72"/>
+      <rect y="4050" width="${WIDTH}" height="750" fill="url(#bottomShade)"/>
+      ${pathText("GOOD TIMES", 220, 280, 58, { letterSpacing: 14, fill: accent })}
+      ${pathText(safeArtist, 220, 545, artistSize, { letterSpacing: 12 })}
+      ${pathText(detail, 3380, 4385, compactDetailSize, { letterSpacing: 5, anchor: "end" })}
+      ${pathText(songLabel, 3380, 4580, songSize, { letterSpacing: 4, anchor: "end", fill: accent })}`,
+    split: `
+      <rect width="${WIDTH}" height="650" fill="url(#topShade)"/>
+      <rect y="3960" width="${WIDTH}" height="840" fill="url(#bottomShade)"/>
+      ${pathText("GOOD TIMES", 220, 300, 60, { letterSpacing: 16, fill: accent })}
+      ${pathText(safeArtist, 3380, 430, artistSize, { letterSpacing: 14, anchor: "end" })}
+      ${pathText(safeVenue, 220, 4330, venueSize, { letterSpacing: 4 })}
+      ${pathText([safeCity, safeDate].filter(Boolean).join("  •  "), 220, 4515, 74, { letterSpacing: 5 })}
+      ${pathText(songLabel, 3380, 4515, songSize, { letterSpacing: 3, anchor: "end", fill: accent })}`,
+    minimal: `
+      <rect y="4100" width="${WIDTH}" height="700" fill="url(#bottomShade)"/>
+      <rect x="180" y="180" width="12" height="380" fill="${accent}"/>
+      ${pathText(safeArtist, 245, 360, artistSize, { letterSpacing: 12 })}
+      ${pathText("A GOOD TIMES CONCERT MEMORY", 245, 505, 52, { letterSpacing: 10, fill: accent })}
+      ${pathText(detail, 220, 4420, compactDetailSize, { letterSpacing: 5 })}
+      ${pathText(songLabel, 220, 4600, songSize, { letterSpacing: 4, fill: accent })}`
+  };
 
   return Buffer.from(`
     <svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity=".88"/><stop offset="1" stop-color="#05030d" stop-opacity="0"/></linearGradient>
-        <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity="0"/><stop offset=".42" stop-color="#05030d" stop-opacity=".64"/><stop offset="1" stop-color="#05030d" stop-opacity=".96"/></linearGradient>
+        <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity=".82"/><stop offset="1" stop-color="#05030d" stop-opacity="0"/></linearGradient>
+        <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity="0"/><stop offset=".45" stop-color="#05030d" stop-opacity=".58"/><stop offset="1" stop-color="#05030d" stop-opacity=".9"/></linearGradient>
       </defs>
-      <rect width="${WIDTH}" height="1050" fill="url(#topShade)"/>
-      <rect y="2700" width="${WIDTH}" height="2100" fill="url(#bottomShade)"/>
-      <rect x="92" y="92" width="3416" height="4616" rx="14" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="8"/>
-      ${pathText("PHISH", 230, 510, 330, { letterSpacing: 60 })}
-      ${pathText("GOOD TIMES", 3370, 470, 80, { letterSpacing: 16, anchor: "end" })}
-      ${pathText("CONCERT MEMORY", 230, venueStart - 380, 78, { letterSpacing: 18, fill: accent })}
-      ${pathLines(venueLines, 230, venueStart, 320, venueSize, { letterSpacing: -12 })}
-      ${pathText(detail, 230, 3990, 94, { letterSpacing: 10 })}
-      ${pathLines(songLines, 230, songStart, 135, 112, { letterSpacing: 8, fill: accent })}
+      <rect x="92" y="92" width="3416" height="4616" rx="14" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="7"/>
+      ${layouts[selectedLayout]}
     </svg>
   `);
 }
@@ -130,7 +173,7 @@ export async function composePrintMaster(sourceBytes, details) {
     .jpeg({ quality: 95, chromaSubsampling: "4:4:4" })
     .toBuffer();
   return sharp(background)
-    .composite([{ input: buildTypographySvg(details), top: 0, left: 0 }])
+    .composite([{ input: buildTypographySvgV2(details), top: 0, left: 0 }])
     .withMetadata({ density: 300 })
     .jpeg({ quality: 95, chromaSubsampling: "4:4:4", mozjpeg: true })
     .toBuffer();
@@ -158,14 +201,17 @@ export default async function handler(req, res) {
   const sourceId = clean(source.id, 40);
   const sourceToken = clean(source.token, 70);
   const details = {
+    artist: clean(body.artist, 120),
     venue: clean(body.venue, 120),
     city: clean(body.city, 100),
     date: clean(body.date, 20),
     song: clean(body.song, 180),
-    style: ["psychedelic", "scenic", "vintage"].includes(body.style) ? body.style : "psychedelic"
+    style: sanitizeStyle(body.style),
+    layout: sanitizeLayout(body.layout)
   };
   if (!UUID_PATTERN.test(sourceId) || !TOKEN_PATTERN.test(sourceToken)) return res.status(400).json({ error: "That generated artwork link is invalid." });
-  if (!details.venue || !details.date) return res.status(400).json({ error: "Venue and show date are required." });
+  if (!details.artist || !details.venue || !details.date) return res.status(400).json({ error: "Artist, venue, and show date are required." });
+  if (hasExcludedReference(details.artist, details.song)) return res.status(400).json({ error: exclusionError() });
 
   try {
     const sourceResult = await get(`generations/${sourceId}-${sourceToken}.webp`, { access: "private" });
