@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 2.7 seconds
-Output:
 import { get } from "@vercel/blob";
 import { neon } from "@neondatabase/serverless";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -186,4 +183,3 @@ export async function markOrderFromSession(session) {
   `;
   return rows.length > 0;
 }
-
