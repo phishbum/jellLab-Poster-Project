@@ -1,11 +1,26 @@
+Exit code: 0
+Wall time: 2.7 seconds
+Output:
 import { get } from "@vercel/blob";
 import { neon } from "@neondatabase/serverless";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import Stripe from "stripe";
 
-const configuredStripeSecret = String(process.env.STRIPE_SECRET_KEY || process.env.Secret || "").trim();
+export function normalizeStripeSecret(value) {
+  const copied = String(value || "")
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .trim();
+  const withoutAssignment = copied
+    .replace(/^["']?\s*STRIPE_SECRET_KEY\s*=\s*/i, "")
+    .replace(/["']?\s*$/, "")
+    .trim();
+  const key = withoutAssignment.match(/(?:^|[^A-Za-z0-9])((?:sk|rk)_(?:live|test)_[A-Za-z0-9]+)(?:[^A-Za-z0-9]|$)/)?.[1];
+  return key || withoutAssignment.replace(/\s+/g, "");
+}
+
+const configuredStripeSecret = normalizeStripeSecret(process.env.STRIPE_SECRET_KEY || process.env.Secret || "");
 if (configuredStripeSecret) {
-  process.env.STRIPE_SECRET_KEY = configuredStripeSecret.replace(/^STRIPE_SECRET_KEY\s*=\s*/, "").trim();
+  process.env.STRIPE_SECRET_KEY = configuredStripeSecret;
 }
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -171,3 +186,4 @@ export async function markOrderFromSession(session) {
   `;
   return rows.length > 0;
 }
+

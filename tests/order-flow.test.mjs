@@ -1,9 +1,12 @@
+Exit code: 0
+Wall time: 2.7 seconds
+Output:
 import test from "node:test";
 import assert from "node:assert/strict";
 import createCheckout from "../api/create-checkout-session.js";
 import orderStatus from "../api/order-status.js";
 import stripeWebhook from "../api/stripe-webhook.js";
-import { checkoutProduct, integrationIdentifier, priceFor } from "../api/_orders.js";
+import { checkoutProduct, integrationIdentifier, normalizeStripeSecret, priceFor } from "../api/_orders.js";
 
 function response() {
   return {
@@ -26,6 +29,14 @@ test("catalog prices are calculated only on the server-approved matrix", () => {
 
 test("Checkout integration identifiers contain eight random letters", () => {
   assert.match(integrationIdentifier(), /^good_times_[a-z]{8}$/);
+});
+
+test("copied Stripe secrets are normalized without logging or exposing them", () => {
+  const key = ["rk", "live", "abc123XYZ"].join("_");
+  assert.equal(normalizeStripeSecret(key), key);
+  assert.equal(normalizeStripeSecret(`STRIPE_SECRET_KEY=${key}`), key);
+  assert.equal(normalizeStripeSecret(`\uFEFF\"STRIPE_SECRET_KEY=${key}\"\n`), key);
+  assert.equal(normalizeStripeSecret(`copied value: ${key}`), key);
 });
 
 test("Checkout product copy is bounded and contains the exact selection", () => {
@@ -82,3 +93,4 @@ test("webhook endpoint requires POST and server-only secrets", async () => {
   if (priorStripe) process.env.STRIPE_SECRET_KEY = priorStripe;
   if (priorWebhook) process.env.STRIPE_WEBHOOK_SECRET = priorWebhook;
 });
+
