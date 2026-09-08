@@ -138,7 +138,7 @@ export async function verifyPrintMaster(source) {
 }
 
 export function checkoutProduct(format, size, snapshot) {
-  const show = [clean(snapshot.venue, 80), clean(snapshot.date, 20)].filter(Boolean).join(" · ");
+  const show = [clean(snapshot.artist, 80), clean(snapshot.venue, 80), clean(snapshot.date, 20)].filter(Boolean).join(" · ");
   return {
     name: `GOOD TIMES ${format}`,
     description: `${size}${show ? ` · ${show}` : ""}`.slice(0, 500)
