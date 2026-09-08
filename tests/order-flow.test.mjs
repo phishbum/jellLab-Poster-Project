@@ -37,9 +37,34 @@ test("copied Stripe secrets are normalized without logging or exposing them", ()
 });
 
 test("Checkout product copy is bounded and contains the exact selection", () => {
-  const product = checkoutProduct("Printed poster", "18 × 24 in", { venue: "The Gorge", date: "1997-08-02" });
+  const product = checkoutProduct("Printed poster", "18 × 24 in", { artist: "Night Bloom", venue: "The Gorge", date: "1997-08-02" });
   assert.equal(product.name, "GOOD TIMES Printed poster");
-  assert.equal(product.description, "18 × 24 in · The Gorge · 1997-08-02");
+  assert.equal(product.description, "18 × 24 in · Night Bloom · The Gorge · 1997-08-02");
+});
+
+test("checkout refuses excluded artist projects before verifying artwork", async () => {
+  const priorDatabase = process.env.DATABASE_URL;
+  const priorStripe = process.env.STRIPE_SECRET_KEY;
+  process.env.DATABASE_URL = "postgres://unused-for-policy-check";
+  process.env.STRIPE_SECRET_KEY = "sk_test_unused_for_policy_check";
+  const res = response();
+  await createCheckout({
+    method: "POST",
+    headers: { origin: "https://jell-lab-poster-project.vercel.app" },
+    body: {
+      customerName: "Poster Fan",
+      customerEmail: "fan@example.com",
+      format: "Digital file",
+      size: "12 × 16 in",
+      poster: { artist: "Grateful Dead", venue: "Sample Venue", date: "2026-08-01" }
+    }
+  }, res);
+  assert.equal(res.statusCode, 400);
+  assert.match(res.payload.error, /does not create Grateful Dead-related artwork/);
+  if (priorDatabase) process.env.DATABASE_URL = priorDatabase;
+  else delete process.env.DATABASE_URL;
+  if (priorStripe) process.env.STRIPE_SECRET_KEY = priorStripe;
+  else delete process.env.STRIPE_SECRET_KEY;
 });
 
 test("checkout rejects unsupported methods and origins before touching services", async () => {
@@ -90,4 +115,3 @@ test("webhook endpoint requires POST and server-only secrets", async () => {
   if (priorStripe) process.env.STRIPE_SECRET_KEY = priorStripe;
   if (priorWebhook) process.env.STRIPE_WEBHOOK_SECRET = priorWebhook;
 });
-
