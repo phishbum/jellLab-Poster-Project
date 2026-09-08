@@ -3,8 +3,9 @@ import { neon } from "@neondatabase/serverless";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY && process.env.Secret) {
-  process.env.STRIPE_SECRET_KEY = process.env.Secret;
+const configuredStripeSecret = String(process.env.STRIPE_SECRET_KEY || process.env.Secret || "").trim();
+if (configuredStripeSecret) {
+  process.env.STRIPE_SECRET_KEY = configuredStripeSecret.replace(/^STRIPE_SECRET_KEY\s*=\s*/, "").trim();
 }
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
