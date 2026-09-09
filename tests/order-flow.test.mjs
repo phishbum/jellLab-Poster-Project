@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import createCheckout from "../api/create-checkout-session.js";
+import createCheckout, { stripeCheckoutFailure } from "../api/create-checkout-session.js";
 import orderStatus from "../api/order-status.js";
 import stripeWebhook from "../api/stripe-webhook.js";
 import { checkoutProduct, integrationIdentifier, normalizeStripeSecret, priceFor } from "../api/_orders.js";
@@ -26,6 +26,19 @@ test("catalog prices are calculated only on the server-approved matrix", () => {
 
 test("Checkout integration identifiers contain eight random letters", () => {
   assert.match(integrationIdentifier(), /^good_times_[a-z]{8}$/);
+});
+
+test("checkout returns safe, actionable Stripe connection failures", () => {
+  assert.deepEqual(stripeCheckoutFailure({ type: "StripeAuthenticationError" }), {
+    error: "Stripe checkout needs its API key refreshed.",
+    reason: "stripe_authentication"
+  });
+  assert.deepEqual(stripeCheckoutFailure({ type: "StripePermissionError" }), {
+    error: "The Stripe key needs permission to create Checkout Sessions.",
+    reason: "stripe_permission"
+  });
+  assert.equal(stripeCheckoutFailure({ type: "StripeInvalidRequestError" }).reason, "stripe_invalid_request");
+  assert.equal(stripeCheckoutFailure(new Error("network")) .reason, "stripe_unavailable");
 });
 
 test("copied Stripe secrets are normalized without logging or exposing them", () => {

@@ -22,6 +22,21 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
 }
 
+export function stripeCheckoutFailure(error) {
+  const type = String(error?.type || error?.name || "");
+  const code = String(error?.code || "");
+  if (/authentication/i.test(type) || code === "api_key_expired") {
+    return { error: "Stripe checkout needs its API key refreshed.", reason: "stripe_authentication" };
+  }
+  if (/permission/i.test(type) || code === "permission_denied") {
+    return { error: "The Stripe key needs permission to create Checkout Sessions.", reason: "stripe_permission" };
+  }
+  if (/invalidrequest/i.test(type)) {
+    return { error: "Stripe rejected one checkout setting. The checkout configuration needs attention.", reason: "stripe_invalid_request" };
+  }
+  return { error: "Secure checkout could not connect to Stripe. Please try again.", reason: "stripe_unavailable" };
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, private");
   if (req.method !== "POST") {
@@ -83,60 +98,70 @@ export default async function handler(req, res) {
         ${format}, ${size}, ${amountTotal}, ${printMaster.id}, ${printMaster.token}, ${JSON.stringify(snapshot)}::jsonb
       )
     `;
+  } catch (error) {
+    console.error("Order storage failed before Checkout Session creation.", { name: error?.name || "Error", message: error?.message || "Unknown error" });
+    return res.status(502).json({ error: "Your order could not be secured before checkout. Please try again.", reason: "order_storage" });
+  }
 
-    const product = checkoutProduct(format, size, snapshot);
-    const params = {
-      mode: "payment",
-      client_reference_id: identity.id,
-      customer_email: customerEmail,
-      line_items: [{
-        quantity: 1,
-        price_data: {
-          currency: "usd",
-          unit_amount: amountTotal,
-          product_data: product
-        }
-      }],
-      success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}#order-confirmation`,
-      cancel_url: `${origin}/?checkout=cancelled#order`,
+  const product = checkoutProduct(format, size, snapshot);
+  const params = {
+    mode: "payment",
+    client_reference_id: identity.id,
+    customer_email: customerEmail,
+    line_items: [{
+      quantity: 1,
+      price_data: {
+        currency: "usd",
+        unit_amount: amountTotal,
+        product_data: product
+      }
+    }],
+    success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}#order-confirmation`,
+    cancel_url: `${origin}/?checkout=cancelled#order`,
+    metadata: {
+      order_id: identity.id,
+      order_number: identity.number,
+      artwork_id: printMaster.id,
+      format,
+      size
+    },
+    payment_intent_data: {
       metadata: {
         order_id: identity.id,
         order_number: identity.number,
-        artwork_id: printMaster.id,
-        format,
-        size
-      },
-      payment_intent_data: {
-        metadata: {
-          order_id: identity.id,
-          order_number: identity.number,
-          artwork_id: printMaster.id
-        }
-      },
-      integration_identifier: integrationIdentifier()
-    };
-    if (format === "Printed poster") params.shipping_address_collection = { allowed_countries: ["US"] };
+        artwork_id: printMaster.id
+      }
+    },
+    integration_identifier: integrationIdentifier()
+  };
+  if (format === "Printed poster") params.shipping_address_collection = { allowed_countries: ["US"] };
 
+  let session;
+  try {
     const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create(params, { idempotencyKey: `good-times-order-${identity.id}` });
+    session = await stripe.checkout.sessions.create(params, { idempotencyKey: `good-times-order-${identity.id}` });
     if (!session?.id || !session?.url) throw new Error("Stripe did not return a checkout URL.");
-
-    try {
-      await sql`
-        UPDATE poster_orders
-           SET stripe_checkout_session_id = ${session.id}, status = 'checkout_open', updated_at = NOW()
-         WHERE id = ${identity.id}
-      `;
-    } catch (error) {
-      try { await stripe.checkout.sessions.expire(session.id); } catch {}
-      throw error;
-    }
-    return res.status(201).json({ checkoutUrl: session.url, orderNumber: identity.number });
   } catch (error) {
     try {
       await sql`UPDATE poster_orders SET status = 'checkout_failed', updated_at = NOW() WHERE id = ${identity.id}`;
     } catch {}
-    console.error("Checkout Session creation failed.", { name: error?.name || "Error", message: error?.message || "Unknown error" });
-    return res.status(502).json({ error: "Secure checkout could not be opened. Please try again." });
+    console.error("Checkout Session creation failed.", { name: error?.name || "Error", type: error?.type || "", code: error?.code || "", message: error?.message || "Unknown error" });
+    return res.status(502).json(stripeCheckoutFailure(error));
   }
+
+  try {
+    await sql`
+      UPDATE poster_orders
+         SET stripe_checkout_session_id = ${session.id}, status = 'checkout_open', updated_at = NOW()
+       WHERE id = ${identity.id}
+    `;
+  } catch (error) {
+    try { await getStripe().checkout.sessions.expire(session.id); } catch {}
+    try {
+      await sql`UPDATE poster_orders SET status = 'checkout_failed', updated_at = NOW() WHERE id = ${identity.id}`;
+    } catch {}
+    console.error("Order storage failed after Checkout Session creation.", { name: error?.name || "Error", message: error?.message || "Unknown error" });
+    return res.status(502).json({ error: "Your checkout opened, but the order could not be secured. Please try again.", reason: "order_storage" });
+  }
+  return res.status(201).json({ checkoutUrl: session.url, orderNumber: identity.number });
 }
