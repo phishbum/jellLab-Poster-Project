@@ -52,6 +52,14 @@ test("the page JavaScript compiles and exposes multi-band controls", () => {
   assert.doesNotMatch(html, /Your Phish show/);
 });
 
+test("layout switching preserves the paid illustration and explains the no-credit workflow", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /switching layouts never spends another AI image credit/);
+  assert.match(html, /if\(artworkGeneration\)\{const replacedFinal=Boolean\(finalArtwork\);finalArtwork=null;artworkApproved=false;renderArtwork\(artworkGeneration\)/);
+  assert.match(html, /Your illustration is preserved/);
+  assert.match(html, /layout-option\[data-layout="minimal"\]:after/);
+});
+
 test("the gallery presents six distinct art-first poster directions", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /The art should stop the scroll/);

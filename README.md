@@ -1,6 +1,6 @@
 # GOOD TIMES Concert Poster Project
 
-A three-step Phish concert-memory poster prototype with AI-assisted creative direction, private AI artwork generation, and permanent private project links.
+A three-step, multi-band concert-memory poster builder with AI-assisted creative direction, private AI artwork generation, art-first typography layouts, and permanent private project links. Grateful Dead-related projects are intentionally excluded.
 
 ## Architecture
 
@@ -13,6 +13,7 @@ A three-step Phish concert-memory poster prototype with AI-assisted creative dir
 - `api/stripe-webhook.js` verifies Stripe's raw-body signature and marks matching orders paid or failed without trusting browser state.
 - `api/order-status.js` securely reconciles the returned Checkout Session and releases the private print-master download only after payment is confirmed.
 - The browser never receives the OpenAI API key.
+- Customers can try every approved typography placement on the same generated illustration without spending another image-generation credit; changing a finalized layout only requires rebuilding the no-cost print master.
 - Only the show date, venue, city, song/moment, memory, selected style, and generated creative direction are sent for artwork generation. Checkout name, email, and payment details are excluded.
 
 ## Environment variables
