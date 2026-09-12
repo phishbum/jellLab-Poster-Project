@@ -60,6 +60,22 @@ test("layout switching preserves the paid illustration and explains the no-credi
   assert.match(html, /layout-option\[data-layout="minimal"\]:after/);
 });
 
+test("the browser ships one artwork flow and no obsolete direct payment links", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  for (const signature of [
+    "function syncPreviewState(",
+    "function clearArtwork(",
+    "function renderArtwork(",
+    "async function generateArtwork(",
+    "function approveArtwork(",
+    "function reviewOrder("
+  ]) {
+    assert.equal(html.split(signature).length - 1, 1, `${signature} should be defined once`);
+  }
+  assert.doesNotMatch(html, /buy\.stripe\.com\/test_/);
+  assert.match(html, /\/api\/create-checkout-session/);
+});
+
 test("the gallery presents six distinct art-first poster directions", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /The art should stop the scroll/);
