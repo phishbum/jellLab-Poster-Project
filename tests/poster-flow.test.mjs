@@ -88,6 +88,12 @@ test("the gallery presents six distinct art-first poster directions", () => {
   }
 });
 
+test("the memory field explains that richer details improve the artwork", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /More detail creates better artwork/);
+  assert.match(html, /people, weather, colors, lights, feelings, funny moments/);
+});
+
 test("AI direction rejects excluded projects before calling OpenAI", async () => {
   const priorKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key-never-sent";
