@@ -1,4 +1,4 @@
-import { clean, ensureOrderSchema, getSql, getStripe, markOrderFromSession } from "./_orders.js";
+import { clean, ensureOrderSchema, fulfillPrintfulOrder, getSql, getStripe, markOrderFromSession } from "./_orders.js";
 
 export const config = { api: { bodyParser: false } };
 
@@ -40,6 +40,7 @@ export default async function handler(req, res) {
     await ensureOrderSchema();
     if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       await markOrderFromSession(event.data.object);
+      await fulfillPrintfulOrder(event.data.object);
     } else if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object;
       const orderId = clean(session?.metadata?.order_id || session?.client_reference_id, 40);

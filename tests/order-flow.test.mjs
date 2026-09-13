@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import createCheckout, { stripeCheckoutFailure } from "../api/create-checkout-session.js";
 import orderStatus from "../api/order-status.js";
 import stripeWebhook from "../api/stripe-webhook.js";
-import { checkoutProduct, integrationIdentifier, normalizeStripeSecret, priceFor } from "../api/_orders.js";
+import { checkoutProduct, integrationIdentifier, normalizeStripeSecret, priceFor, printfulVariantFor } from "../api/_orders.js";
 
 function response() {
   return {
@@ -53,6 +53,12 @@ test("Checkout product copy is bounded and contains the exact selection", () => 
   const product = checkoutProduct("Printed poster", "18 × 24 in", { artist: "Night Bloom", venue: "The Gorge", date: "1997-08-02" });
   assert.equal(product.name, "GOOD TIMES Printed poster");
   assert.equal(product.description, "18 × 24 in · Night Bloom · The Gorge · 1997-08-02");
+});
+
+test("printed poster sizes map to current Printful matte poster variants", () => {
+  assert.equal(printfulVariantFor("12 × 16 in"), 1349);
+  assert.equal(printfulVariantFor("18 × 24 in"), 1);
+  assert.equal(printfulVariantFor("unsupported"), null);
 });
 
 test("checkout refuses excluded artist projects before verifying artwork", async () => {

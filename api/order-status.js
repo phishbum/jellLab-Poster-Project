@@ -15,7 +15,8 @@ export default async function handler(req, res) {
     await ensureOrderSchema();
     const sql = getSql();
     let rows = await sql`
-      SELECT order_number, status, format, size, amount_total, currency, artwork_id, artwork_token, created_at, paid_at
+      SELECT order_number, status, format, size, amount_total, currency, artwork_id, artwork_token, created_at, paid_at,
+             printful_order_id, printful_status
         FROM poster_orders
        WHERE stripe_checkout_session_id = ${sessionId}
        LIMIT 1
@@ -26,7 +27,8 @@ export default async function handler(req, res) {
       const session = await getStripe().checkout.sessions.retrieve(sessionId);
       await markOrderFromSession(session);
       rows = await sql`
-        SELECT order_number, status, format, size, amount_total, currency, artwork_id, artwork_token, created_at, paid_at
+        SELECT order_number, status, format, size, amount_total, currency, artwork_id, artwork_token, created_at, paid_at,
+               printful_order_id, printful_status
           FROM poster_orders
          WHERE stripe_checkout_session_id = ${sessionId}
          LIMIT 1
@@ -47,6 +49,7 @@ export default async function handler(req, res) {
         currency: order.currency,
         createdAt: order.created_at,
         paidAt: order.paid_at,
+        fulfillmentStatus: order.format === "Printed poster" ? (order.printful_status || "pending") : null,
         downloadUrl: query ? `/api/artwork?${query}` : null
       }
     });

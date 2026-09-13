@@ -47,8 +47,9 @@ export function getSql() {
 
 export async function ensureOrderSchema() {
   if (!orderSchemaReady) {
-    orderSchemaReady = getSql()`
-      CREATE TABLE IF NOT EXISTS poster_orders (
+    const sql = getSql();
+    orderSchemaReady = (async () => {
+      await sql`CREATE TABLE IF NOT EXISTS poster_orders (
         id UUID PRIMARY KEY,
         order_number VARCHAR(24) UNIQUE NOT NULL,
         access_hash CHAR(64) NOT NULL,
@@ -68,8 +69,12 @@ export async function ensureOrderSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         paid_at TIMESTAMPTZ
-      )
-    `.catch(error => {
+      )`;
+      await sql`ALTER TABLE poster_orders ADD COLUMN IF NOT EXISTS printful_order_id TEXT`;
+      await sql`ALTER TABLE poster_orders ADD COLUMN IF NOT EXISTS printful_status VARCHAR(32)`;
+      await sql`ALTER TABLE poster_orders ADD COLUMN IF NOT EXISTS printful_error TEXT`;
+      await sql`ALTER TABLE poster_orders ADD COLUMN IF NOT EXISTS printful_attempted_at TIMESTAMPTZ`;
+    })().catch(error => {
       orderSchemaReady = undefined;
       throw error;
     });
@@ -158,6 +163,103 @@ export function sessionShipping(session) {
     postalCode: clean(address.postal_code, 24),
     country: clean(address.country, 2)
   };
+}
+
+const PRINTFUL_VARIANTS = Object.freeze({
+  "12 × 16 in": 1349,
+  "18 × 24 in": 1
+});
+
+export function printfulVariantFor(size) {
+  return PRINTFUL_VARIANTS[size] || null;
+}
+
+function printfulArtworkUrl(order) {
+  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL || "jell-lab-poster-project.vercel.app";
+  return `https://${host}/api/artwork?id=${encodeURIComponent(order.artwork_id)}&token=${encodeURIComponent(order.artwork_token)}`;
+}
+
+export async function fulfillPrintfulOrder(session) {
+  const sessionId = clean(session?.id, 160);
+  if (!CHECKOUT_SESSION_PATTERN.test(sessionId)) return { skipped: true };
+
+  const sql = getSql();
+  const [order] = await sql`
+    SELECT id, order_number, customer_name, customer_email, format, size, amount_total,
+           artwork_id, artwork_token, shipping_details, printful_order_id, printful_status
+      FROM poster_orders
+     WHERE stripe_checkout_session_id = ${sessionId} AND status = 'paid'
+     LIMIT 1
+  `;
+  if (!order || order.format !== "Printed poster") return { skipped: true };
+  if (order.printful_order_id) return { orderId: order.printful_order_id, status: order.printful_status, existing: true };
+  if (!process.env.PRINTFUL_TOKEN) throw new Error("PRINTFUL_TOKEN is missing.");
+
+  const variantId = printfulVariantFor(order.size);
+  const shipping = order.shipping_details || {};
+  if (!variantId || !shipping.name || !shipping.line1 || !shipping.city || !shipping.state || !shipping.postalCode || shipping.country !== "US") {
+    throw new Error("The paid printed order is missing a supported size or complete US shipping address.");
+  }
+
+  const claimed = await sql`
+    UPDATE poster_orders
+       SET printful_status = 'submitting', printful_error = NULL,
+           printful_attempted_at = NOW(), updated_at = NOW()
+     WHERE id = ${order.id}
+       AND printful_order_id IS NULL
+       AND (printful_status IS NULL OR printful_status <> 'submitting' OR printful_attempted_at < NOW() - INTERVAL '10 minutes')
+    RETURNING id
+  `;
+  if (!claimed.length) return { skipped: true, pending: true };
+
+  const payload = {
+    external_id: order.order_number,
+    shipping: "STANDARD",
+    recipient: {
+      name: shipping.name,
+      email: order.customer_email,
+      address1: shipping.line1,
+      address2: shipping.line2 || undefined,
+      city: shipping.city,
+      state_code: shipping.state,
+      country_code: shipping.country,
+      zip: shipping.postalCode
+    },
+    items: [{
+      variant_id: variantId,
+      quantity: 1,
+      name: `Good Times custom concert poster — ${order.size}`,
+      retail_price: (Number(order.amount_total) / 100).toFixed(2),
+      files: [{ type: "default", url: printfulArtworkUrl(order) }]
+    }]
+  };
+
+  try {
+    const response = await fetch("https://api.printful.com/orders?confirm=1&update_existing=1", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.PRINTFUL_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20000)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result?.result?.id) throw new Error(`Printful order request failed (${response.status}).`);
+    const printfulId = String(result.result.id);
+    const printfulStatus = clean(result.result.status || "submitted", 32);
+    await sql`
+      UPDATE poster_orders
+         SET printful_order_id = ${printfulId}, printful_status = ${printfulStatus},
+             printful_error = NULL, updated_at = NOW()
+       WHERE id = ${order.id}
+    `;
+    return { orderId: printfulId, status: printfulStatus };
+  } catch (error) {
+    await sql`
+      UPDATE poster_orders
+         SET printful_status = 'failed', printful_error = ${clean(error?.message || "Printful request failed.", 500)}, updated_at = NOW()
+       WHERE id = ${order.id} AND printful_order_id IS NULL
+    `.catch(() => {});
+    throw error;
+  }
 }
 
 export async function markOrderFromSession(session) {
