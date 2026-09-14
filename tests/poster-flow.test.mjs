@@ -92,14 +92,25 @@ test("the gallery presents six distinct art-first poster directions", () => {
 
 test("the memory field explains that richer details improve the artwork", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /More detail creates better artwork/);
-  assert.match(html, /people, weather, colors, lights, feelings, funny moments/);
+  assert.match(html, /The more we can feel, the better the artwork becomes/);
+  assert.match(html, /people, weather, ground, temperature, colors, lights, sounds, movement/);
+});
+
+test("the experience asks for sensory memory and promises to bring the moment back", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const directionSource = readFileSync(new URL("../api/generate-poster.js", import.meta.url), "utf8");
+  const artworkSource = readFileSync(new URL("../api/generate-artwork.js", import.meta.url), "utf8");
+  assert.match(html, /FEEL THE<br><span class="accent">NIGHT\. AGAIN\./);
+  assert.match(html, /What did the air feel like\?/);
+  assert.match(html, /LIFE IS SHORT\.<br>MOMENTS CAN BE FOREVER\./);
+  assert.match(directionSource, /Translate sensory details into visual decisions/);
+  assert.match(artworkSource, /Translate the supplied sensory memory into the image/);
 });
 
 test("issue one rebrands the homepage around memory art and the permanent collection", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   for (const required of [
-    "REMEMBER<br><span class=\"accent\">THE NIGHT.",
+    "FEEL THE<br><span class=\"accent\">NIGHT. AGAIN.",
     "THE GOOD TIMES COLLECTION",
     "GOOD TIMES No. 001",
     "THE ARCHIVE",
