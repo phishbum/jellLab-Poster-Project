@@ -38,6 +38,8 @@ test("every final typography layout creates a distinct art-first overlay", () =>
   assert.equal(new Set(svgs).size, POSTER_LAYOUTS.length);
   for (const svg of svgs) {
     assert.match(svg, /<svg width="3600" height="4800"/);
+    assert.match(svg, /INDEPENDENT ARTWORK BY GOOD TIMES/);
+    assert.match(svg, /NOT AFFILIATED WITH OR ENDORSED BY THE PERFORMER OR VENUE/);
     assert.doesNotMatch(svg, /PHISH/);
   }
 });
@@ -111,6 +113,12 @@ test("issue one rebrands the homepage around memory art and the permanent collec
   assert.match(html, /assets\/good-times-no-001-final\.jpg/);
   assert.match(html, /Good Times is an independent art studio/);
   assert.doesNotMatch(html, /Your concert\.<br>Your memory/);
+});
+
+test("the site promises a visible independence statement on every finished poster", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /Visible on every finished poster/);
+  assert.match(html, /Each print includes a small, readable edge statement/);
 });
 
 test("AI direction rejects excluded projects before calling OpenAI", async () => {
