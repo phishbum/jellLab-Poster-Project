@@ -80,7 +80,7 @@ test("the browser ships one artwork flow and no obsolete direct payment links", 
 
 test("the gallery presents six distinct art-first poster directions", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /The art should stop the scroll/);
+  assert.match(html, /The art should take you back/);
   assert.match(html, /High Country Orbit/);
   assert.match(html, /Low Country Moon/);
   assert.match(html, /Frequency Garden/);
@@ -121,9 +121,17 @@ test("issue one rebrands the homepage around memory art and the permanent collec
     "Technology helps create the art. The memory is why it exists.",
     "private by default"
   ]) assert.match(html, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(html, /assets\/good-times-no-001-final-v2\.png/);
+  assert.match(html, /assets\/good-times-no-001-phish-final\.png/);
   assert.match(html, /Good Times is an independent art studio/);
   assert.doesNotMatch(html, /Your concert\.<br>Your memory/);
+});
+
+test("the launch experience stays concert-focused", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /The art should take you back/);
+  assert.match(html, /First shows, unforgettable encores, miracle tickets/);
+  assert.doesNotMatch(html, /The art should stop the scroll/);
+  assert.doesNotMatch(html, /weddings, road trips, a kid's first game/);
 });
 
 test("the site promises a visible independence statement on every finished poster", () => {
