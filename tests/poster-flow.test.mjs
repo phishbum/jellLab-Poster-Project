@@ -110,7 +110,7 @@ test("issue one rebrands the homepage around memory art and the permanent collec
     "Technology helps create the art. The memory is why it exists.",
     "private by default"
   ]) assert.match(html, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(html, /assets\/good-times-no-001-final\.jpg/);
+  assert.match(html, /assets\/good-times-no-001-final-v2\.png/);
   assert.match(html, /Good Times is an independent art studio/);
   assert.doesNotMatch(html, /Your concert\.<br>Your memory/);
 });
