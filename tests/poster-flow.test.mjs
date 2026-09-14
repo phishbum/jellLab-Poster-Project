@@ -94,6 +94,25 @@ test("the memory field explains that richer details improve the artwork", () => 
   assert.match(html, /people, weather, colors, lights, feelings, funny moments/);
 });
 
+test("issue one rebrands the homepage around memory art and the permanent collection", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  for (const required of [
+    "REMEMBER<br><span class=\"accent\">THE NIGHT.",
+    "THE GOOD TIMES COLLECTION",
+    "GOOD TIMES No. 001",
+    "THE ARCHIVE",
+    "MADE FOR MEMORIES.",
+    "YOUR GOOD TIME",
+    "SHARED GOOD TIMES",
+    "HOW WE CREATE",
+    "Technology helps create the art. The memory is why it exists.",
+    "private by default"
+  ]) assert.match(html, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(html, /assets\/good-times-no-001-final\.jpg/);
+  assert.match(html, /Good Times is an independent art studio/);
+  assert.doesNotMatch(html, /Your concert\.<br>Your memory/);
+});
+
 test("AI direction rejects excluded projects before calling OpenAI", async () => {
   const priorKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key-never-sent";
