@@ -134,6 +134,16 @@ test("the launch experience stays concert-focused", () => {
   assert.doesNotMatch(html, /weddings, road trips, a kid's first game/);
 });
 
+test("the first style offers a colorful and trippy illustrated direction", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const directionSource = readFileSync(new URL("../api/generate-poster.js", import.meta.url), "utf8");
+  assert.match(html, /Colorful &amp; trippy/);
+  assert.match(html, /Playful characters, impossible worlds, vibrating color/);
+  assert.match(html, /background-image:url\('assets\/hero-musical-carnival\.png'\)/);
+  assert.match(directionSource, /treat it as COLORFUL & TRIPPY/);
+  assert.match(directionSource, /rather than generic fractals or formless swirls/);
+});
+
 test("the site promises a visible independence statement on every finished poster", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /Visible on every finished poster/);
