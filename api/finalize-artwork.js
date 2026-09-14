@@ -79,7 +79,7 @@ function pathText(value, x, y, fontSize, { letterSpacing = 0, anchor = "start", 
     width += (glyphs[index].advanceWidth || POSTER_FONT.unitsPerEm) * scale;
     if (index < glyphs.length - 1) width += letterSpacing;
   }
-  let cursor = anchor === "end" ? x - width : x;
+  let cursor = anchor === "end" ? x - width : anchor === "middle" ? x - width / 2 : x;
   const paths = [];
   for (let index = 0; index < glyphs.length; index += 1) {
     const glyph = glyphs[index];
@@ -121,6 +121,8 @@ export function buildTypographySvgV2({ artist, venue, city, date, song, style, l
   const compactDetailSize = fitSize(detail, 3000, 88, 58, 5);
   const songLabel = safeSong ? `MEMORY: ${safeSong}` : "ONE NIGHT. YOUR STORY.";
   const songSize = fitSize(songLabel, 2860, 92, 58, 4);
+  const independenceLine = "INDEPENDENT ARTWORK BY GOOD TIMES  •  NOT AFFILIATED WITH OR ENDORSED BY THE PERFORMER OR VENUE";
+  const independenceSize = fitSize(independenceLine, 3140, 34, 26, 2);
 
   const layouts = {
     gallery: `
@@ -156,13 +158,14 @@ export function buildTypographySvgV2({ artist, venue, city, date, song, style, l
   };
 
   return Buffer.from(`
-    <svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+    <svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg" data-independence-statement="${independenceLine}">
       <defs>
         <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity=".82"/><stop offset="1" stop-color="#05030d" stop-opacity="0"/></linearGradient>
         <linearGradient id="bottomShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030d" stop-opacity="0"/><stop offset=".45" stop-color="#05030d" stop-opacity=".58"/><stop offset="1" stop-color="#05030d" stop-opacity=".9"/></linearGradient>
       </defs>
       <rect x="92" y="92" width="3416" height="4616" rx="14" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="7"/>
       ${layouts[selectedLayout]}
+      ${pathText(independenceLine, 1800, 4725, independenceSize, { letterSpacing: 2, anchor: "middle", fill: "#fff" })}
     </svg>
   `);
 }
