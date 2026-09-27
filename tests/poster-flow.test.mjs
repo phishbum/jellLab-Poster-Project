@@ -154,6 +154,14 @@ test("impossible wonderland is a permanent original fantasy direction", () => {
   assert.match(directionSource, /paradoxical paths or architecture/);
 });
 
+test("impossible wonderland leads the shop experience", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /currentStyle='wonderland'/);
+  assert.match(html, /poster front"><img src="assets\/impossible-wonderland\.png"/);
+  assert.match(html, /01 \/ 07 · Flagship/);
+  assert.match(html, /Impossible Wonderland leads the collection/);
+});
+
 test("the site promises a visible independence statement on every finished poster", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /Visible on every finished poster/);
