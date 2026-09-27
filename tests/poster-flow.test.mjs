@@ -17,7 +17,7 @@ function response() {
 }
 
 test("multi-band poster styles and typography layouts are server-approved", () => {
-  assert.deepEqual(POSTER_STYLES, ["psychedelic", "cosmic-bluegrass", "southern-gothic", "scenic", "funk", "vintage"]);
+  assert.deepEqual(POSTER_STYLES, ["psychedelic", "wonderland", "cosmic-bluegrass", "southern-gothic", "scenic", "funk", "vintage"]);
   assert.deepEqual(POSTER_LAYOUTS, ["gallery", "corner", "split", "minimal"]);
   assert.equal(sanitizeStyle("cosmic-bluegrass"), "cosmic-bluegrass");
   assert.equal(sanitizeStyle("unknown"), "psychedelic");
@@ -142,6 +142,16 @@ test("the first style offers a colorful and trippy illustrated direction", () =>
   assert.match(html, /background-image:url\('assets\/hero-musical-carnival\.png'\)/);
   assert.match(directionSource, /treat it as COLORFUL & TRIPPY/);
   assert.match(directionSource, /rather than generic fractals or formless swirls/);
+});
+
+test("impossible wonderland is a permanent original fantasy direction", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const directionSource = readFileSync(new URL("../api/generate-poster.js", import.meta.url), "utf8");
+  assert.match(html, /data-style="wonderland"/);
+  assert.match(html, /Impossible Wonderland/);
+  assert.match(html, /assets\/impossible-wonderland\.png/);
+  assert.match(directionSource, /treat it as IMPOSSIBLE WONDERLAND/);
+  assert.match(directionSource, /paradoxical paths or architecture/);
 });
 
 test("the site promises a visible independence statement on every finished poster", () => {
