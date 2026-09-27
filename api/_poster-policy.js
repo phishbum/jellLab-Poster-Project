@@ -7,7 +7,7 @@ const EXCLUDED_REFERENCES = [
   /\b13[ -]?point\s+lightning\s+bolt\b/i
 ];
 
-export const POSTER_STYLES = ["psychedelic", "cosmic-bluegrass", "southern-gothic", "scenic", "funk", "vintage"];
+export const POSTER_STYLES = ["psychedelic", "wonderland", "cosmic-bluegrass", "southern-gothic", "scenic", "funk", "vintage"];
 export const POSTER_LAYOUTS = ["gallery", "corner", "split", "minimal"];
 
 export function cleanPosterText(value, max) {
